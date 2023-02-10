@@ -1,4 +1,4 @@
-![progress-banner](https://codecrafters.io/landing/images/default_progress_banners/grep.png)
+[![progress-banner](https://app.codecrafters.io/progress/grep/bcee41b4-1aaa-494a-afe0-8fe6c0da512b)](https://app.codecrafters.io/users/IlyushaZ)
 
 This is a starting point for Go solutions to the
 ["Build Your Own grep" Challenge](https://app.codecrafters.io/courses/grep/overview).
