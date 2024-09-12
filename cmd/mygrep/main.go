@@ -48,8 +48,20 @@ func matchLine(line []byte, pattern string) (ok bool) {
 
 	last := len(pattern) - 1
 	if pattern[0] == '[' && pattern[last] == ']' {
-		group := pattern[1:last]
-		return bytes.ContainsAny(line, group)
+		first := 1
+		negative := pattern[1] == '^'
+		if negative {
+			first = 2
+		}
+
+		group := pattern[first:last]
+
+		contains := bytes.ContainsAny(line, group)
+		if negative {
+			return !contains
+		}
+
+		return contains
 	}
 
 	return bytes.ContainsAny(line, pattern)
