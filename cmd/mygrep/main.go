@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"unicode"
 )
 
 // Usage: echo <input_text> | your_grep.sh -E <pattern>
@@ -22,24 +23,25 @@ func main() {
 		os.Exit(2)
 	}
 
-	ok, err := matchLine(line, pattern)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(2)
-	}
-
+	ok := matchLine(line, pattern)
 	if !ok {
 		os.Exit(1)
 	}
 }
 
-func matchLine(line []byte, pattern string) (bool, error) {
-	if pattern == `\d` {
-		ok := bytes.ContainsAny(line, "012345678")
-		return ok, nil
+func matchLine(line []byte, pattern string) (ok bool) {
+	switch pattern {
+	case `\d`:
+		ok = bytes.ContainsAny(line, "012345678")
+	case `\w`:
+		for _, char := range line {
+			if unicode.IsLetter(rune(char)) || unicode.IsDigit(rune(char)) {
+				return true
+			}
+		}
+	default:
+		ok = bytes.ContainsAny(line, pattern)
 	}
 
-	ok := bytes.ContainsAny(line, pattern)
-
-	return ok, nil
+	return ok
 }
