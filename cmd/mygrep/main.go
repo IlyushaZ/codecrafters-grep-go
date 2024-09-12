@@ -30,18 +30,27 @@ func main() {
 }
 
 func matchLine(line []byte, pattern string) (ok bool) {
-	switch pattern {
-	case `\d`:
-		ok = bytes.ContainsAny(line, "012345678")
-	case `\w`:
+	if len(pattern) == 0 {
+		panic("empty pattern")
+	}
+
+	if pattern == `\d` {
+		return bytes.ContainsAny(line, "012345678")
+	}
+
+	if pattern == `\w` {
 		for _, char := range line {
 			if unicode.IsLetter(rune(char)) || unicode.IsDigit(rune(char)) {
 				return true
 			}
 		}
-	default:
-		ok = bytes.ContainsAny(line, pattern)
 	}
 
-	return ok
+	last := len(pattern) - 1
+	if pattern[0] == '[' && pattern[last] == ']' {
+		group := pattern[1:last]
+		return bytes.ContainsAny(line, group)
+	}
+
+	return bytes.ContainsAny(line, pattern)
 }
