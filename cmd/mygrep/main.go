@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"os"
-	"unicode"
 )
 
 // Usage: echo <input_text> | your_grep.sh -E <pattern>
@@ -23,46 +21,13 @@ func main() {
 		os.Exit(2)
 	}
 
-	ok := matchLine(line, pattern)
-	if !ok {
+	match, err := matchString(string(line), pattern)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: can't match string: %v", err)
+		os.Exit(2)
+	}
+
+	if !match {
 		os.Exit(1)
 	}
-}
-
-func matchLine(line []byte, pattern string) (ok bool) {
-	if len(pattern) == 0 {
-		panic("empty pattern")
-	}
-
-	if pattern == `\d` {
-		return bytes.ContainsAny(line, "012345678")
-	}
-
-	if pattern == `\w` {
-		for _, char := range line {
-			if unicode.IsLetter(rune(char)) || unicode.IsDigit(rune(char)) {
-				return true
-			}
-		}
-	}
-
-	last := len(pattern) - 1
-	if pattern[0] == '[' && pattern[last] == ']' {
-		first := 1
-		negative := pattern[1] == '^'
-		if negative {
-			first = 2
-		}
-
-		group := pattern[first:last]
-
-		contains := bytes.ContainsAny(line, group)
-		if negative {
-			return !contains
-		}
-
-		return contains
-	}
-
-	return bytes.ContainsAny(line, pattern)
 }
