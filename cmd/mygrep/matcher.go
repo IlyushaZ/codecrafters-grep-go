@@ -14,7 +14,7 @@ func matchString(s string, pattern string) (bool, error) {
 		return true, nil
 	}
 
-	if _, ok := tokens[0].(startOfLine); ok {
+	if _, ok := tokens[0].(startOfString); ok {
 		return matchHere(s, tokens[1:]), nil
 	}
 
@@ -30,16 +30,23 @@ func matchString(s string, pattern string) (bool, error) {
 }
 
 func matchHere(s string, regex []token) bool {
+	currToken := 0
+
 	for i := 0; i < len(s); i++ {
 		if i >= len(regex) {
 			break
 		}
 
-		if i == len(s)-1 && i < len(regex)-1 { // TODO: maybe this can be improved?
-			return false
+		// TODO: refactor me?
+		// if i is last element but regex is not over
+		if i == len(s)-1 && i < len(regex)-1 {
+			break
 		}
 
 		switch t := regex[i].(type) {
+		case endOfString:
+			return false
+
 		case char:
 			if s[i] != byte(t) {
 				return false
@@ -67,6 +74,13 @@ func matchHere(s string, regex []token) bool {
 				return false
 			}
 		}
+
+		currToken++
+	}
+
+	if currToken < len(regex)-1 {
+		_, ok := regex[currToken+1].(endOfString)
+		return ok
 	}
 
 	return true

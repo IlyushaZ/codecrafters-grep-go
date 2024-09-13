@@ -28,7 +28,9 @@ type charGroup struct {
 	// rng      *[2]byte // range of the chars
 }
 
-type startOfLine struct{}
+type startOfString struct{}
+
+type endOfString struct{}
 
 func parseString(s string) ([]token, error) {
 	tokens := []token{}
@@ -80,7 +82,10 @@ func parseString(s string) ([]token, error) {
 			tokens = append(tokens, cg)
 
 		case '^':
-			tokens = append(tokens, startOfLine{})
+			tokens = append(tokens, startOfString{})
+
+		case '$':
+			tokens = append(tokens, endOfString{})
 
 		default:
 			tokens = append(tokens, char(s[i]))
@@ -117,7 +122,12 @@ func (cg charGroup) String() string {
 	return sb.String()
 }
 
-func (startOfLine) isToken() {}
-func (startOfLine) String() string {
+func (startOfString) isToken() {}
+func (startOfString) String() string {
 	return "^"
+}
+
+func (endOfString) isToken() {}
+func (endOfString) String() string {
+	return "$"
 }
