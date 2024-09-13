@@ -10,18 +10,26 @@ func matchString(s string, pattern string) (bool, error) {
 		return false, err
 	}
 
+	if len(tokens) == 0 {
+		return true, nil
+	}
+
+	if _, ok := tokens[0].(startOfLine); ok {
+		return matchHere(s, tokens[1:]), nil
+	}
+
 	origLine := s
 	match := false
 
 	for i := 0; i < len(origLine) && !match; i++ {
 		s = origLine[i:]
-		match = matchFromStart(s, tokens)
+		match = matchHere(s, tokens)
 	}
 
 	return match, nil
 }
 
-func matchFromStart(s string, regex []token) bool {
+func matchHere(s string, regex []token) bool {
 	for i := 0; i < len(s); i++ {
 		if i >= len(regex) {
 			break

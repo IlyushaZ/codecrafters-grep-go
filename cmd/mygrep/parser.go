@@ -28,6 +28,8 @@ type charGroup struct {
 	// rng      *[2]byte // range of the chars
 }
 
+type startOfLine struct{}
+
 func parseString(s string) ([]token, error) {
 	tokens := []token{}
 
@@ -77,6 +79,9 @@ func parseString(s string) ([]token, error) {
 
 			tokens = append(tokens, cg)
 
+		case '^':
+			tokens = append(tokens, startOfLine{})
+
 		default:
 			tokens = append(tokens, char(s[i]))
 		}
@@ -110,4 +115,9 @@ func (cg charGroup) String() string {
 	sb.WriteByte(']')
 
 	return sb.String()
+}
+
+func (startOfLine) isToken() {}
+func (startOfLine) String() string {
+	return "^"
 }
