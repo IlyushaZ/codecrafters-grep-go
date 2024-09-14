@@ -20,7 +20,7 @@ type char byte
 
 type anyDigit struct{}
 
-type anyChar struct{}
+type anyLetter struct{}
 
 type charGroup struct {
 	chars    []byte // enumeration of all possible chars
@@ -34,6 +34,8 @@ type endOfString struct{}
 type oneOrMore struct{}
 
 type zeroOrMore struct{}
+
+type wildcard struct{}
 
 func parseString(s string) ([]token, error) {
 	tokens := []token{}
@@ -49,7 +51,7 @@ func parseString(s string) ([]token, error) {
 			case 'd':
 				tokens = append(tokens, anyDigit{})
 			case 'w':
-				tokens = append(tokens, anyChar{})
+				tokens = append(tokens, anyLetter{})
 			case '\\':
 				tokens = append(tokens, char(s[i]))
 				i++
@@ -104,6 +106,9 @@ func parseString(s string) ([]token, error) {
 
 			tokens = append(tokens, zeroOrMore{})
 
+		case '.':
+			tokens = append(tokens, wildcard{})
+
 		default:
 			tokens = append(tokens, char(s[i]))
 		}
@@ -118,8 +123,8 @@ func (c char) String() string { return fmt.Sprintf("%c", byte(c)) }
 func (anyDigit) isToken()         {}
 func (a anyDigit) String() string { return "\\d" }
 
-func (anyChar) isToken()         {}
-func (a anyChar) String() string { return "\\w" }
+func (anyLetter) isToken()         {}
+func (a anyLetter) String() string { return "\\w" }
 
 func (charGroup) isToken() {}
 func (cg charGroup) String() string {
@@ -157,4 +162,9 @@ func (oneOrMore) String() string {
 func (zeroOrMore) isToken() {}
 func (zeroOrMore) String() string {
 	return "?"
+}
+
+func (wildcard) isToken() {}
+func (wildcard) String() string {
+	return "."
 }

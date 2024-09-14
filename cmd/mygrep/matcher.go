@@ -37,6 +37,19 @@ func matchHere(s string, pattern []token) bool {
 		case endOfString:
 			return pos == len(s)
 
+		case anyDigit:
+			if pos == len(s) || !isDigit(s[pos]) {
+				return false
+			}
+
+		case anyLetter:
+			if pos == len(s) || !isLetter(s[pos]) {
+				return false
+			}
+
+		case wildcard:
+			// do nothing, because any value matches it
+
 		case char:
 			if pos == len(s) || s[pos] != byte(t) {
 				// check so we can safely check the next token
@@ -51,17 +64,6 @@ func matchHere(s string, pattern []token) bool {
 				// continue without incrementing the pos in order to cover the case with zero occurrences
 				continue
 			}
-
-		case anyDigit:
-			if pos == len(s) || !isDigit(s[pos]) {
-				return false
-			}
-
-		case anyChar:
-			if pos == len(s) || !isLetter(s[pos]) {
-				return false
-			}
-
 		case charGroup:
 			if pos == len(s) {
 				return false
