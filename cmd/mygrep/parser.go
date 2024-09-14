@@ -25,12 +25,13 @@ type anyChar struct{}
 type charGroup struct {
 	chars    []byte // enumeration of all possible chars
 	negative bool
-	// rng      *[2]byte // range of the chars
 }
 
 type startOfString struct{}
 
 type endOfString struct{}
+
+type oneOrMore struct{}
 
 func parseString(s string) ([]token, error) {
 	tokens := []token{}
@@ -87,6 +88,13 @@ func parseString(s string) ([]token, error) {
 		case '$':
 			tokens = append(tokens, endOfString{})
 
+		case '+':
+			if i == 0 {
+				return nil, fmt.Errorf("%w: expected '+' to have preceding token", ErrInvalidPattern)
+			}
+
+			tokens = append(tokens, oneOrMore{})
+
 		default:
 			tokens = append(tokens, char(s[i]))
 		}
@@ -130,4 +138,9 @@ func (startOfString) String() string {
 func (endOfString) isToken() {}
 func (endOfString) String() string {
 	return "$"
+}
+
+func (oneOrMore) isToken() {}
+func (oneOrMore) String() string {
+	return "+"
 }

@@ -29,43 +29,37 @@ func matchString(s string, pattern string) (bool, error) {
 	return match, nil
 }
 
-func matchHere(s string, regex []token) bool {
-	currToken := 0
+func matchHere(s string, pattern []token) bool {
+	pos := 0 // position in s
 
-	for i := 0; i < len(s); i++ {
-		if i >= len(regex) {
-			break
-		}
-
-		// TODO: refactor me?
-		// if i is last element but regex is not over
-		if i == len(s)-1 && i < len(regex)-1 {
-			break
-		}
-
-		switch t := regex[i].(type) {
+	for i, tkn := range pattern {
+		switch t := tkn.(type) {
 		case endOfString:
-			return false
+			return pos == len(s)
 
 		case char:
-			if s[i] != byte(t) {
+			if pos == len(s) || s[pos] != byte(t) {
 				return false
 			}
 
 		case anyDigit:
-			if !isDigit(s[i]) {
+			if pos == len(s) || !isDigit(s[pos]) {
 				return false
 			}
 
 		case anyChar:
-			if !isLetter(s[i]) {
+			if pos == len(s) || !isLetter(s[pos]) {
 				return false
 			}
 
 		case charGroup:
+			if pos == len(s) {
+				return false
+			}
+
 			contains := false
 			for _, c := range t.chars {
-				if s[i] == c {
+				if s[pos] == c {
 					contains = true
 				}
 			}
@@ -73,14 +67,27 @@ func matchHere(s string, regex []token) bool {
 			if t.negative == contains {
 				return false
 			}
+
+		case oneOrMore:
+			prev := pattern[i-1]
+
+			for {
+				if pos >= len(s) {
+					break
+				}
+
+				match := matchHere(s[pos:pos+1], []token{prev})
+				if !match {
+					break
+				}
+
+				pos++
+			}
+
+			continue // avoid incrementing pos one more time
 		}
 
-		currToken++
-	}
-
-	if currToken < len(regex)-1 {
-		_, ok := regex[currToken+1].(endOfString)
-		return ok
+		pos++
 	}
 
 	return true
