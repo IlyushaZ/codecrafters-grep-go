@@ -64,6 +64,27 @@ func matchHere(s string, pattern []token) bool {
 				// continue without incrementing the pos in order to cover the case with zero occurrences
 				continue
 			}
+
+		case alteration:
+			match := false
+
+			for _, w := range t.words {
+				ts := stringToTokens(w)
+
+				if matchHere(s[pos:pos+len(ts)], ts) {
+					match = true
+					pos += len(ts)
+					break
+				}
+			}
+
+			if !match {
+				return false
+			}
+
+			// continue without incrementing the pos because we've already moved it after matching
+			continue
+
 		case charGroup:
 			if pos == len(s) {
 				return false
@@ -129,4 +150,12 @@ func isDigit(char byte) bool {
 
 func isLetter(char byte) bool {
 	return unicode.IsLetter(rune(char))
+}
+
+func stringToTokens(s string) []token {
+	ts := make([]token, 0, len(s))
+	for i := 0; i < len(s); i++ {
+		ts = append(ts, char(s[i]))
+	}
+	return ts
 }

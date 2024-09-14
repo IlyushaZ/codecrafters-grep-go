@@ -37,6 +37,10 @@ type zeroOrMore struct{}
 
 type wildcard struct{}
 
+type alteration struct {
+	words []string
+}
+
 func parseString(s string) ([]token, error) {
 	tokens := []token{}
 
@@ -109,6 +113,24 @@ func parseString(s string) ([]token, error) {
 		case '.':
 			tokens = append(tokens, wildcard{})
 
+		case '(':
+			i++
+			if i == len(s) {
+				return nil, ErrUnexpectedEnd
+			}
+
+			closing := strings.Index(s[i:], ")")
+			if closing == -1 {
+				return nil, fmt.Errorf("%w: alteration: expected ')'", ErrInvalidPattern)
+			}
+
+			a := alteration{
+				words: strings.Split(s[i:i+closing], "|"),
+			}
+			tokens = append(tokens, a)
+
+			i += closing
+
 		default:
 			tokens = append(tokens, char(s[i]))
 		}
@@ -167,4 +189,9 @@ func (zeroOrMore) String() string {
 func (wildcard) isToken() {}
 func (wildcard) String() string {
 	return "."
+}
+
+func (alteration) isToken() {}
+func (a alteration) String() string {
+	return "(" + strings.Join(a.words, "|") + ")"
 }
