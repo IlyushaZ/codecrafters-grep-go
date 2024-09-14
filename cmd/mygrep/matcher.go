@@ -4,8 +4,8 @@ import (
 	"unicode"
 )
 
-func matchString(s string, pattern string) (bool, error) {
-	tokens, err := parseString(pattern)
+func MatchString(pattern, s string) (bool, error) {
+	tokens, err := parsePattern(pattern)
 	if err != nil {
 		return false, err
 	}
@@ -15,7 +15,7 @@ func matchString(s string, pattern string) (bool, error) {
 	}
 
 	if _, ok := tokens[0].(startOfString); ok {
-		return matchHere(s, tokens[1:]), nil
+		return matchHere(tokens[1:], s), nil
 	}
 
 	origLine := s
@@ -23,13 +23,13 @@ func matchString(s string, pattern string) (bool, error) {
 
 	for i := 0; i < len(origLine) && !match; i++ {
 		s = origLine[i:]
-		match = matchHere(s, tokens)
+		match = matchHere(tokens, s)
 	}
 
 	return match, nil
 }
 
-func matchHere(s string, pattern []token) bool {
+func matchHere(pattern []token, s string) bool {
 	pos := 0 // position in s
 
 	for i, tkn := range pattern {
@@ -71,7 +71,7 @@ func matchHere(s string, pattern []token) bool {
 			for _, w := range t.words {
 				ts := stringToTokens(w)
 
-				if matchHere(s[pos:pos+len(ts)], ts) {
+				if matchHere(ts, s[pos:pos+len(ts)]) {
 					match = true
 					pos += len(ts)
 					break
@@ -109,7 +109,7 @@ func matchHere(s string, pattern []token) bool {
 					break
 				}
 
-				match := matchHere(s[pos:pos+1], []token{prev})
+				match := matchHere([]token{prev}, s[pos:pos+1])
 				if !match {
 					break
 				}
@@ -127,7 +127,7 @@ func matchHere(s string, pattern []token) bool {
 					break
 				}
 
-				match := matchHere(s[pos:pos+1], []token{prev})
+				match := matchHere([]token{prev}, s[pos:pos+1])
 				if !match {
 					break
 				}

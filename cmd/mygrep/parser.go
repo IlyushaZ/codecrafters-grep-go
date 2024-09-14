@@ -41,7 +41,7 @@ type alteration struct {
 	words []string
 }
 
-func parseString(s string) ([]token, error) {
+func parsePattern(s string) ([]token, error) {
 	tokens := []token{}
 
 	for i := 0; i < len(s); i++ {

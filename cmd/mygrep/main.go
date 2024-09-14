@@ -21,7 +21,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	match, err := matchString(string(line), pattern)
+	match, err := MatchString(pattern, string(line))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: can't match string: %v", err)
 		os.Exit(2)
