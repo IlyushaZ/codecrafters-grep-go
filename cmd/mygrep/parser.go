@@ -33,6 +33,8 @@ type endOfString struct{}
 
 type oneOrMore struct{}
 
+type zeroOrMore struct{}
+
 func parseString(s string) ([]token, error) {
 	tokens := []token{}
 
@@ -95,6 +97,13 @@ func parseString(s string) ([]token, error) {
 
 			tokens = append(tokens, oneOrMore{})
 
+		case '?':
+			if i == 0 {
+				return nil, fmt.Errorf("%w: expected '?' to have preceding token", ErrInvalidPattern)
+			}
+
+			tokens = append(tokens, zeroOrMore{})
+
 		default:
 			tokens = append(tokens, char(s[i]))
 		}
@@ -143,4 +152,9 @@ func (endOfString) String() string {
 func (oneOrMore) isToken() {}
 func (oneOrMore) String() string {
 	return "+"
+}
+
+func (zeroOrMore) isToken() {}
+func (zeroOrMore) String() string {
+	return "?"
 }

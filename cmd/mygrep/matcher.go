@@ -39,7 +39,17 @@ func matchHere(s string, pattern []token) bool {
 
 		case char:
 			if pos == len(s) || s[pos] != byte(t) {
-				return false
+				// check so we can safely check the next token
+				if last := i == len(pattern)-1; last {
+					return false
+				}
+
+				if _, optional := pattern[i+1].(zeroOrMore); !optional {
+					return false
+				}
+
+				// continue without incrementing the pos in order to cover the case with zero occurrences
+				continue
 			}
 
 		case anyDigit:
@@ -69,6 +79,24 @@ func matchHere(s string, pattern []token) bool {
 			}
 
 		case oneOrMore:
+			prev := pattern[i-1]
+
+			for {
+				if pos >= len(s) {
+					break
+				}
+
+				match := matchHere(s[pos:pos+1], []token{prev})
+				if !match {
+					break
+				}
+
+				pos++
+			}
+
+			continue // avoid incrementing pos one more time
+
+		case zeroOrMore:
 			prev := pattern[i-1]
 
 			for {
