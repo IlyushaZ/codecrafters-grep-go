@@ -18,11 +18,11 @@ func MatchString(pattern, s string) (bool, error) {
 		return matchHere(tokens[1:], s), nil
 	}
 
-	origLine := s
+	orig := s
 	match := false
 
-	for i := 0; i < len(origLine) && !match; i++ {
-		s = origLine[i:]
+	for i := 0; i < len(orig) && !match; i++ {
+		s = orig[i:]
 		match = matchHere(tokens, s)
 	}
 
@@ -101,25 +101,7 @@ func matchHere(pattern []token, s string) bool {
 				return false
 			}
 
-		case oneOrMore:
-			prev := pattern[i-1]
-
-			for {
-				if pos >= len(s) {
-					break
-				}
-
-				match := matchHere([]token{prev}, s[pos:pos+1])
-				if !match {
-					break
-				}
-
-				pos++
-			}
-
-			continue // avoid incrementing pos one more time
-
-		case zeroOrMore:
+		case oneOrMore, zeroOrMore:
 			prev := pattern[i-1]
 
 			for {
