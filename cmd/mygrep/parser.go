@@ -12,7 +12,7 @@ var (
 )
 
 type token interface {
-	String() string
+	fmt.Stringer
 	isToken()
 }
 
