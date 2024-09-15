@@ -69,7 +69,7 @@ func matchHere(pattern []token, s string) bool {
 			match := false
 
 			for _, w := range t.words {
-				ts := stringToTokens(w)
+				ts := tokenizeString(w)
 
 				if matchHere(ts, s[pos:pos+len(ts)]) {
 					match = true
@@ -134,7 +134,7 @@ func isLetter(char byte) bool {
 	return unicode.IsLetter(rune(char))
 }
 
-func stringToTokens(s string) []token {
+func tokenizeString(s string) []token {
 	ts := make([]token, 0, len(s))
 	for i := 0; i < len(s); i++ {
 		ts = append(ts, char(s[i]))
