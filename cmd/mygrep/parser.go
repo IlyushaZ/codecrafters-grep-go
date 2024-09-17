@@ -33,7 +33,7 @@ type endOfString struct{}
 
 type oneOrMore struct{}
 
-type zeroOrMore struct{}
+type zeroOrOne struct{}
 
 type wildcard struct{}
 
@@ -108,7 +108,7 @@ func parsePattern(s string) ([]token, error) {
 				return nil, fmt.Errorf("%w: expected '?' to have preceding token", ErrInvalidPattern)
 			}
 
-			tokens = append(tokens, zeroOrMore{})
+			tokens = append(tokens, zeroOrOne{})
 
 		case '.':
 			tokens = append(tokens, wildcard{})
@@ -181,8 +181,8 @@ func (oneOrMore) String() string {
 	return "+"
 }
 
-func (zeroOrMore) isToken() {}
-func (zeroOrMore) String() string {
+func (zeroOrOne) isToken() {}
+func (zeroOrOne) String() string {
 	return "?"
 }
 

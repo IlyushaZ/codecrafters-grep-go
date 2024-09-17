@@ -57,7 +57,7 @@ func matchHere(pattern []token, s string) bool {
 					return false
 				}
 
-				if _, optional := pattern[i+1].(zeroOrMore); !optional {
+				if _, zeroOrOne := pattern[i+1].(zeroOrOne); !zeroOrOne {
 					return false
 				}
 
@@ -101,7 +101,7 @@ func matchHere(pattern []token, s string) bool {
 				return false
 			}
 
-		case oneOrMore, zeroOrMore:
+		case oneOrMore, zeroOrOne:
 			prev := pattern[i-1]
 
 			for {
