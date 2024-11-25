@@ -1,21 +1,23 @@
 package main
 
 import (
+	"fmt"
+	"strings"
 	"unicode"
 )
 
 func MatchString(pattern, s string) (bool, error) {
-	tokens, err := parsePattern(pattern)
+	ts, err := parsePattern(pattern)
 	if err != nil {
 		return false, err
 	}
 
-	if len(tokens) == 0 {
+	if len(ts) == 0 {
 		return true, nil
 	}
 
-	if _, ok := tokens[0].(startOfString); ok {
-		return matchHere(tokens[1:], s), nil
+	if _, ok := ts[0].(startOfString); ok {
+		return matchHere(ts[1:], s).match, nil
 	}
 
 	orig := s
@@ -23,28 +25,35 @@ func MatchString(pattern, s string) (bool, error) {
 
 	for i := 0; i < len(orig) && !match; i++ {
 		s = orig[i:]
-		match = matchHere(tokens, s)
+		match = matchHere(ts, s).match
 	}
 
 	return match, nil
 }
 
-func matchHere(pattern []token, s string) bool {
+type matchResult struct {
+	match bool
+	end   int // non-zero if matched
+}
+
+func matchHere(pattern []token, s string) matchResult {
 	pos := 0 // position in s
+
+	captured := []string{}
 
 	for i, tkn := range pattern {
 		switch t := tkn.(type) {
 		case endOfString:
-			return pos == len(s)
+			return matchResult{pos == len(s), pos} // TODO: pos?
 
 		case anyDigit:
 			if pos == len(s) || !isDigit(s[pos]) {
-				return false
+				return matchResult{false, 0}
 			}
 
 		case anyLetter:
 			if pos == len(s) || !isLetter(s[pos]) {
-				return false
+				return matchResult{false, 0}
 			}
 
 		case wildcard:
@@ -54,40 +63,20 @@ func matchHere(pattern []token, s string) bool {
 			if pos == len(s) || s[pos] != byte(t) {
 				// check so we can safely check the next token
 				if last := i == len(pattern)-1; last {
-					return false
+					return matchResult{false, 0}
 				}
 
 				if _, zeroOrOne := pattern[i+1].(zeroOrOne); !zeroOrOne {
-					return false
+					return matchResult{false, 0}
 				}
 
 				// continue without incrementing the pos in order to cover the case with zero occurrences
 				continue
 			}
 
-		case alteration:
-			match := false
-
-			for _, w := range t.words {
-				ts := tokenizeString(w)
-
-				if matchHere(ts, s[pos:pos+len(ts)]) {
-					match = true
-					pos += len(ts)
-					break
-				}
-			}
-
-			if !match {
-				return false
-			}
-
-			// continue without incrementing the pos because we've already moved it after matching
-			continue
-
 		case charGroup:
 			if pos == len(s) {
-				return false
+				return matchResult{false, 0}
 			}
 
 			contains := false
@@ -98,19 +87,69 @@ func matchHere(pattern []token, s string) bool {
 			}
 
 			if t.negative == contains {
-				return false
+				return matchResult{false, 0}
 			}
 
-		case oneOrMore, zeroOrOne:
+		case captureGroup:
+			match := false
+
+			for _, p := range t.patterns {
+				if m := matchHere(p, s[pos:]); m.match {
+					match = true
+					captured = append(captured, s[pos:pos+m.end])
+					pos += m.end
+				}
+			}
+
+			if !match {
+				return matchResult{false, 0}
+			}
+
+			continue
+
+		case backReference:
+			if len(captured) < int(t) { // normally should not happen, as it's checked by the parser
+				panic(fmt.Sprintf("invalid back reference %d. len(captured)=%d", t, len(captured)))
+			}
+
+			if len(s[pos:]) < len(captured[t]) {
+				return matchResult{false, 0}
+			}
+
+			if !strings.HasPrefix(s[pos:], captured[t]) {
+				return matchResult{false, 0}
+			}
+
+			pos += len(captured[t])
+
+			continue // continue without incrementing the pos
+
+		case zeroOrOne:
 			prev := pattern[i-1]
+			if !matchHere([]token{prev}, s[pos:pos+1]).match {
+				continue // it's zero, no need to go forward
+			}
+
+		case oneOrMore:
+			prev := pattern[i-1]
+			var next token
+			if i != len(pattern)-1 {
+				next = pattern[i+1]
+			}
 
 			for {
 				if pos >= len(s) {
 					break
 				}
 
-				match := matchHere([]token{prev}, s[pos:pos+1])
-				if !match {
+				// cover corner-case when + is preceded by .
+				// . will match every char until the end of string
+				// and there will be no chance that next matchHere call will result in false
+				if next != nil && matchHere([]token{next}, s[pos:pos+1]).match {
+					break
+				}
+
+				if !matchHere([]token{prev}, s[pos:pos+1]).match {
 					break
 				}
 
@@ -123,7 +162,7 @@ func matchHere(pattern []token, s string) bool {
 		pos++
 	}
 
-	return true
+	return matchResult{true, pos}
 }
 
 func isDigit(char byte) bool {
