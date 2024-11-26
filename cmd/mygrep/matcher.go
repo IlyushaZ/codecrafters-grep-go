@@ -16,8 +16,10 @@ func MatchString(pattern, s string) (bool, error) {
 		return true, nil
 	}
 
+	m := newMatcher()
+
 	if _, ok := ts[0].(startOfString); ok {
-		return matchHere(ts[1:], s).match, nil
+		return m.matchHere(ts[1:], s).match, nil
 	}
 
 	orig := s
@@ -25,10 +27,20 @@ func MatchString(pattern, s string) (bool, error) {
 
 	for i := 0; i < len(orig) && !match; i++ {
 		s = orig[i:]
-		match = matchHere(ts, s).match
+		match = m.matchHere(ts, s).match
 	}
 
 	return match, nil
+}
+
+type matcher struct {
+	groupID  int
+	captured map[int]string
+	next     token // for corner-cases
+}
+
+func newMatcher() *matcher {
+	return &matcher{groupID: 0, captured: make(map[int]string)}
 }
 
 type matchResult struct {
@@ -36,15 +48,13 @@ type matchResult struct {
 	end   int // non-zero if matched
 }
 
-func matchHere(pattern []token, s string) matchResult {
+func (m *matcher) matchHere(pattern []token, s string) matchResult {
 	pos := 0 // position in s
-
-	captured := []string{}
 
 	for i, tkn := range pattern {
 		switch t := tkn.(type) {
 		case endOfString:
-			return matchResult{pos == len(s), pos} // TODO: pos?
+			return matchResult{pos == len(s), pos}
 
 		case anyDigit:
 			if pos == len(s) || !isDigit(s[pos]) {
@@ -93,11 +103,19 @@ func matchHere(pattern []token, s string) matchResult {
 		case captureGroup:
 			match := false
 
+			m.groupID++
+			currentGroup := m.groupID
+
+			if i != len(pattern)-1 {
+				m.next = pattern[i+1]
+			}
+
 			for _, p := range t.patterns {
-				if m := matchHere(p, s[pos:]); m.match {
+				if mr := m.matchHere(p, s[pos:]); mr.match {
 					match = true
-					captured = append(captured, s[pos:pos+m.end])
-					pos += m.end
+					m.captured[currentGroup] = s[pos : pos+mr.end]
+					pos += mr.end
+					break
 				}
 			}
 
@@ -108,33 +126,34 @@ func matchHere(pattern []token, s string) matchResult {
 			continue
 
 		case backReference:
-			if len(captured) < int(t) { // normally should not happen, as it's checked by the parser
-				panic(fmt.Sprintf("invalid back reference %d. len(captured)=%d", t, len(captured)))
+			val := m.captured[int(t)+1]
+
+			if val == "" {
+				panic(fmt.Sprintf("invalid back reference %d, %v", t, m.captured))
 			}
 
-			if len(s[pos:]) < len(captured[t]) {
+			if len(s[pos:]) < len(val) {
 				return matchResult{false, 0}
 			}
 
-			if !strings.HasPrefix(s[pos:], captured[t]) {
+			if !strings.HasPrefix(s[pos:], val) {
 				return matchResult{false, 0}
 			}
 
-			pos += len(captured[t])
+			pos += len(val)
 
 			continue // continue without incrementing the pos
 
 		case zeroOrOne:
 			prev := pattern[i-1]
-			if !matchHere([]token{prev}, s[pos:pos+1]).match {
+			if !m.matchHere([]token{prev}, s[pos:pos+1]).match {
 				continue // it's zero, no need to go forward
 			}
 
 		case oneOrMore:
 			prev := pattern[i-1]
-			var next token
 			if i != len(pattern)-1 {
-				next = pattern[i+1]
+				m.next = pattern[i+1]
 			}
 
 			for {
@@ -145,11 +164,11 @@ func matchHere(pattern []token, s string) matchResult {
 				// cover corner-case when + is preceded by .
 				// . will match every char until the end of string
 				// and there will be no chance that next matchHere call will result in false
-				if next != nil && matchHere([]token{next}, s[pos:pos+1]).match {
+				if m.next != nil && m.matchHere([]token{m.next}, s[pos:pos+1]).match {
 					break
 				}
 
-				if !matchHere([]token{prev}, s[pos:pos+1]).match {
+				if !m.matchHere([]token{prev}, s[pos:pos+1]).match {
 					break
 				}
 

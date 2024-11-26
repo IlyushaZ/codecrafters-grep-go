@@ -16,12 +16,10 @@ type token interface {
 	isToken()
 }
 
-type tokens []token
-
 type (
 	char          byte
-	anyDigit      struct{}
-	anyLetter     struct{}
+	anyDigit      struct{} // \d
+	anyLetter     struct{} // \w
 	startOfString struct{} // ^
 	endOfString   struct{} // $
 	oneOrMore     struct{} // +
@@ -38,7 +36,6 @@ type (
 
 func parsePattern(s string) ([]token, error) {
 	tokens := []token{}
-	captureGroups := 0
 
 	for i := 0; i < len(s); i++ {
 		switch s[i] {
@@ -58,9 +55,6 @@ func parsePattern(s string) ([]token, error) {
 			default:
 				if '0' < next && next <= '9' {
 					ref := int(next - 48)
-					if captureGroups < ref {
-						return nil, syntaxErrorf("back reference out of range. groups: %d, ref: %d", captureGroups, ref)
-					}
 
 					tokens = append(tokens, backReference(ref-1)) // make it start from zero instead of one
 				} else {
@@ -124,31 +118,36 @@ func parsePattern(s string) ([]token, error) {
 			tokens = append(tokens, wildcard{})
 
 		case '(':
-			i++
-			if i == len(s) {
-				return nil, ErrUnexpectedEnd
-			}
-
-			closing := strings.Index(s[i:], ")")
+			closing := closingParentesis(s[i:])
 			if closing == -1 {
 				return nil, syntaxErrorf("alteration: expected ')'")
 			}
 
-			content := s[i : i+closing]
+			content := s[i+1 : i+closing]
 
-			words := strings.Split(content, "|")
-			patterns := make([][]token, 0, len(words))
+			var patterns [][]token
 
-			for _, w := range words {
-				p, err := parsePattern(w)
+			if !hasNestedGroup(content) {
+				words := strings.Split(content, "|")
+				patterns = make([][]token, 0, len(words))
+
+				for _, w := range words {
+					p, err := parsePattern(w)
+					if err != nil {
+						return nil, err
+					}
+
+					patterns = append(patterns, p)
+				}
+			} else {
+				internal, err := parsePattern(content)
 				if err != nil {
 					return nil, err
 				}
 
-				patterns = append(patterns, p)
+				patterns = [][]token{internal}
 			}
 
-			captureGroups++
 			tokens = append(tokens, captureGroup{patterns})
 
 			i += closing
@@ -159,6 +158,33 @@ func parsePattern(s string) ([]token, error) {
 	}
 
 	return tokens, nil
+}
+
+// todo: improve me
+func hasNestedGroup(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] == '(' {
+			return true
+		}
+	}
+	return false
+}
+
+func closingParentesis(s string) int {
+	opened := 0
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '(':
+			opened++
+		case ')':
+			opened--
+			if opened == 0 {
+				return i
+			}
+		}
+	}
+
+	return -1
 }
 
 func syntaxErrorf(format string, a ...interface{}) error {
@@ -227,11 +253,14 @@ func (cg captureGroup) String() string {
 	sb := &strings.Builder{}
 
 	sb.WriteString("(")
-	for _, p := range cg.patterns {
+	for i, p := range cg.patterns {
 		for _, t := range p {
 			sb.WriteString(t.String())
 		}
-		sb.WriteString("|")
+
+		if i != len(cg.patterns)-1 {
+			sb.WriteString("|")
+		}
 	}
 	sb.WriteString(")")
 
