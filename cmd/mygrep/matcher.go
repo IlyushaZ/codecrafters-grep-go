@@ -7,19 +7,19 @@ import (
 )
 
 func MatchString(pattern, s string) (bool, error) {
-	ts, err := parsePattern(pattern)
+	p, err := parsePattern(pattern)
 	if err != nil {
 		return false, err
 	}
 
-	if len(ts) == 0 {
+	if len(p) == 0 {
 		return true, nil
 	}
 
 	m := newMatcher()
 
-	if _, ok := ts[0].(startOfString); ok {
-		return m.matchHere(ts[1:], s).match, nil
+	if _, ok := p[0].(startOfString); ok {
+		return m.matchHere(p[1:], s).match, nil
 	}
 
 	orig := s
@@ -27,7 +27,7 @@ func MatchString(pattern, s string) (bool, error) {
 
 	for i := 0; i < len(orig) && !match; i++ {
 		s = orig[i:]
-		match = m.matchHere(ts, s).match
+		match = m.matchHere(p, s).match
 	}
 
 	return match, nil
@@ -106,6 +106,8 @@ func (m *matcher) matchHere(pattern []token, s string) matchResult {
 			m.groupID++
 			currentGroup := m.groupID
 
+			// we need to save the next token for cases
+			// when capture group contains a pattern that will match the whole s until the end
 			if i != len(pattern)-1 {
 				m.next = pattern[i+1]
 			}
@@ -115,6 +117,7 @@ func (m *matcher) matchHere(pattern []token, s string) matchResult {
 					match = true
 					m.captured[currentGroup] = s[pos : pos+mr.end]
 					pos += mr.end
+					m.next = nil
 					break
 				}
 			}
